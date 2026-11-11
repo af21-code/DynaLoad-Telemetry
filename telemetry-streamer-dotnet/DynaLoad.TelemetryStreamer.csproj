@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <!-- Automatically use the locally installed net10.0 reference pack if net8.0 targeting pack is absent in an offline environment -->
+    <TargetFramework Condition="!Exists('/usr/local/share/dotnet/packs/Microsoft.NETCore.App.Ref/8.0.0') and Exists('/usr/local/share/dotnet/packs/Microsoft.NETCore.App.Ref/10.0.14')">net10.0</TargetFramework>
+    <RollForward>LatestMajor</RollForward>
+    <EnableSourceControlManagerQueries>false</EnableSourceControlManagerQueries>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>DynaLoad.TelemetryStreamer</RootNamespace>
+    <AssemblyName>DynaLoad.TelemetryStreamer</AssemblyName>
+    <Description>100 Hz High-Frequency Structural Load &amp; Damper Kinematics UDP Telemetry Streamer for Aerospace MRO (ATA 32) and Formula 1 Trackside</Description>
+  </PropertyGroup>
+
+</Project>
