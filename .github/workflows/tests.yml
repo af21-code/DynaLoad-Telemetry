@@ -1,0 +1,79 @@
+name: DynaLoad-Telemetry CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  kinematics-ml-tests:
+    name: Python Kinematics & Isolation Forest ML Suite
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r kinematics-ml-engine/requirements.txt
+          pip install -r dashboard/requirements.txt
+          pip install -e kinematics-ml-engine
+
+      - name: Run Pytest Suite
+        working-directory: kinematics-ml-engine
+        run: pytest tests/ -v
+
+  dotnet-streamer-and-e2e:
+    name: C# .NET 8 Telemetry Streamer & Cross-Language E2E
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Setup Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build .NET 8 Telemetry Streamer
+        run: dotnet build telemetry-streamer-dotnet/DynaLoad.TelemetryStreamer.csproj --configuration Release
+
+      - name: Run .NET 8 Streamer Self-Test
+        run: dotnet run --project telemetry-streamer-dotnet/DynaLoad.TelemetryStreamer.csproj --configuration Release -- --self-test
+
+      - name: Cross-Language E2E (C# 100 Hz Streamer -> Python Kinematics & ML Engine)
+        run: |
+          pip install -r kinematics-ml-engine/requirements.txt
+          dotnet run --project telemetry-streamer-dotnet/DynaLoad.TelemetryStreamer.csproj -- --profile aero --scenario overload --duration-sec 6 --fast --export-csv /tmp/aero_overload.csv
+          dotnet run --project telemetry-streamer-dotnet/DynaLoad.TelemetryStreamer.csproj -- --profile f1 --scenario fault --duration-sec 6 --fast --export-json /tmp/f1_fault.json
+          python -c "
+          import sys
+          sys.path.insert(0, 'kinematics-ml-engine')
+          from kinematics_ml_engine import load_telemetry_from_csv, load_telemetry_from_json, run_telemetry_pipeline, InspectionSeverity
+          b_aero = load_telemetry_from_csv('/tmp/aero_overload.csv')
+          _, _, _, rep_aero = run_telemetry_pipeline(b_aero)
+          assert rep_aero.severity == InspectionSeverity.CRITICAL_ACTION_REQUIRED
+          b_f1 = load_telemetry_from_json('/tmp/f1_fault.json')
+          _, _, anom_f1, rep_f1 = run_telemetry_pipeline(b_f1)
+          assert anom_f1.is_degraded
+          print('Cross-language E2E verification passed!')
+          "
