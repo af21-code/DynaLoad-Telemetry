@@ -46,6 +46,7 @@ from .structural_loads import (
     generate_inspection_report,
 )
 from .udp_listener import capture_udp_telemetry
+from .f1_game_udp import GameSession, analyze_session, build_session, load_session, record_udp
 
 
 def run_telemetry_pipeline(
@@ -77,6 +78,7 @@ def run_telemetry_pipeline(
 __all__ = [
     "AEROSPACE_ATA32_CONFIG",
     "F1_TRACKSIDE_CONFIG",
+    "GameSession",
     "AnomalyResult",
     "HAS_SKLEARN",
     "InspectionActionItem",
@@ -90,6 +92,8 @@ __all__ = [
     "TelemetryBatch",
     "VelocityRegime",
     "analyze_kinematics",
+    "analyze_session",
+    "build_session",
     "capture_udp_telemetry",
     "classify_velocity_regimes",
     "compute_damper_velocity",
@@ -102,7 +106,9 @@ __all__ = [
     "generate_inspection_report",
     "generate_telemetry",
     "get_profile_config",
+    "load_session",
     "load_telemetry_from_csv",
     "load_telemetry_from_json",
+    "record_udp",
     "run_telemetry_pipeline",
 ]

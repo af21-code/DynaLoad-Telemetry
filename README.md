@@ -6,8 +6,8 @@
 
 * **What it does:** streams 100 Hz suspension telemetry from a C# / .NET 8 service over UDP, then a Python engine derives damper velocity, classifies bump/rebound regimes, checks structural limits and flags damper faults with an Isolation Forest.
 * **F1 focus:** damper potentiometer, pushrod load and gas-reservoir channels; plank/skid-block bottoming checks against FIA references. The same model also runs an aircraft landing-gear profile.
-* **Data:** synthetic. The generators in `telemetry-streamer-dotnet/Simulation/` and `kinematics_ml_engine/simulator.py` produce nominal, overload and fault laps; no real car data is used (see [Validation & Limitations](#5-validation--limitations)).
-* **Quality:** 18 Pytest tests and a GitHub Actions pipeline that runs the .NET streamer end to end into the Python engine.
+* **Data:** the detector results below come from synthetic laps produced by `telemetry-streamer-dotnet/Simulation/` and `kinematics_ml_engine/simulator.py` (see [Validation & Limitations](#5-validation--limitations)). A reader for the **EA SPORTS F1 game UDP feed** brings in real per-wheel suspension data from the game (see [4.4](#44-record-real-suspension-data-from-the-f1-game)).
+* **Quality:** 37 Pytest tests and a GitHub Actions pipeline that runs the .NET streamer end to end into the Python engine.
 
 ![F1 profile: nominal vs gas-loss fault](docs/images/f1_nominal_vs_fault.png)
 
@@ -113,7 +113,8 @@ DynaLoad-Telemetry/
 │   │   ├── structural_loads.py             # EASA AMM 05-51-11 & FIA Art. 3.5.9 action report engine
 │   │   ├── anomaly_detector.py             # Isolation Forest & polytropic feature extraction
 │   │   ├── simulator.py                    # 100 Hz synthetic generator & CSV/JSON loaders
-│   │   └── udp_listener.py                 # Live 100 Hz UDP socket capture
+│   │   ├── udp_listener.py                 # Live 100 Hz UDP socket capture
+│   │   └── f1_game_udp.py                  # EA F1 game UDP reader: record, replay, per-wheel analysis
 │   ├── validation/
 │   │   └── validate_f1_detector.py         # Gas-loss sensitivity sweep (Section 5)
 │   └── tests/
@@ -121,7 +122,8 @@ DynaLoad-Telemetry/
 │       ├── test_kinematics.py
 │       ├── test_structural_loads.py
 │       ├── test_anomaly_detector.py
-│       └── test_end_to_end.py
+│       ├── test_end_to_end.py
+│       └── test_f1_game_udp.py
 └── dashboard/                              # Module 3: Streamlit Dual-Profile Interactive UI
     ├── app.py
     └── requirements.txt
@@ -174,6 +176,38 @@ Use the sidebar selector to switch instantaneously between:
 
 ---
 
+### 4.4 Record real suspension data from the F1 game
+
+The EA SPORTS F1 game (F1 23, F1 24, F1 25; PC or console) streams telemetry over UDP. DynaLoad reads two packets:
+
+* **Motion Ex** (id 13, player car): suspension position, velocity and acceleration for each wheel, wheel speeds and forces, front/rear aero height (F1 24+).
+* **Motion** (id 0): vertical g-force, pitch and roll, matched to Motion Ex by frame.
+
+**In the game:** Settings → Telemetry Settings → UDP Telemetry **On**, UDP IP Address = the IP of the computer running DynaLoad (`127.0.0.1` if it is the same PC), UDP Port **20777**, UDP Send Rate **60 Hz**, UDP Format **2025** (2024 and 2023 also work).
+
+```bash
+cd kinematics-ml-engine
+pip install -e .
+
+# Record while you drive (Motion and Motion Ex only, a few MB for a stint)
+python -m kinematics_ml_engine.f1_game_udp record --out ../data/monza_fl.dlcap --duration 300
+
+# Per-wheel summary and a JSON report
+python -m kinematics_ml_engine.f1_game_udp analyze ../data/monza_fl.dlcap --json ../data/monza_fl.json
+```
+
+What the analysis does:
+
+* Rebuilds the player-car time series, drops repeated frames and splits it where session time jumps (flashbacks, pauses), so derivatives never cross a discontinuity.
+* Differentiates suspension position per wheel with the same engine used on the synthetic data, and classifies bump/rebound regimes.
+* **Checks the derived velocity against the game's own suspension-velocity channel** (correlation, scale, best lag). This tests the numerical differentiation on independent real data instead of on signals it generated itself.
+
+From Python, `load_session(path)` returns a `GameSession`, and `session.to_corner_batch("FL")` gives a `TelemetryBatch` for the kinematics stage. The game sends no damper pressure, so the pressure-based anomaly detector does not apply to game data.
+
+Notes: the UDP specification gives no units for suspension position, velocity and acceleration, so values are kept as sent and treated as millimetres only where the kinematics needs a unit. The game's send rate is set in its menu (60 Hz recommended) and is lower than the 100 Hz of the synthetic streamer; timestamps come from the game's session time, so the kinematics adapts to the actual rate. The reader is tested on packets built byte by byte from the published layouts (`tests/test_f1_game_udp.py`).
+
+---
+
 ## 5. Validation & Limitations
 
 ### 5.1 How sensitive is the F1 detector?
@@ -198,13 +232,13 @@ Reproduce with `python kinematics-ml-engine/validation/validate_f1_detector.py` 
 
 ### 5.2 Limitations
 
-* **Synthetic data only.** Generators and detector were written together, so these numbers measure internal consistency, not performance on a real car.
+* **Detector results are synthetic.** Generators and detector were written together, so these numbers measure internal consistency, not performance on a real car. The F1 game reader (4.4) adds real per-wheel suspension motion, but the game has no damper pressure channel, so the gas-loss detector cannot be validated on it.
 * **Model constants are illustrative.** Pressures, stroke limits and knee velocities are plausible values, not measurements from a specific damper.
 * **Single-corner, single-channel view.** Real setups compare four corners, heave and roll dampers, and correlate with ride height and aero load.
 
 ### 5.3 Next steps
 
-* Ingest real 100 Hz suspension data from a racing simulator UDP feed (for example the EA F1 game telemetry, which exposes suspension position and velocity per wheel) through the existing C# streamer.
+* Record reference stints from the F1 game, publish the captures and report the derived-vs-game velocity check per wheel.
+* Use the game's four-corner data for a heave/roll decomposition and for ride-height (aero height) bottoming checks.
 * Replace the fixed fault thresholds with a graded severity score and report detection delay in laps.
-* Extend the feature vector to four corners plus heave/roll.
 
