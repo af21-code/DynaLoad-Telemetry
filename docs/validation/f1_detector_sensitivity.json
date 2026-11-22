@@ -1,0 +1,79 @@
+[
+  {
+    "pressure_loss_pct": 0.0,
+    "runs": 30,
+    "flagged_degraded_rate": 0.0,
+    "gas_loss_named_rate": 0.0,
+    "median_anomalous_fraction": 0.033
+  },
+  {
+    "pressure_loss_pct": 2.0,
+    "runs": 30,
+    "flagged_degraded_rate": 0.0,
+    "gas_loss_named_rate": 0.0,
+    "median_anomalous_fraction": 0.033
+  },
+  {
+    "pressure_loss_pct": 4.0,
+    "runs": 30,
+    "flagged_degraded_rate": 0.0,
+    "gas_loss_named_rate": 0.0,
+    "median_anomalous_fraction": 0.038
+  },
+  {
+    "pressure_loss_pct": 6.0,
+    "runs": 30,
+    "flagged_degraded_rate": 0.0,
+    "gas_loss_named_rate": 0.0,
+    "median_anomalous_fraction": 0.05
+  },
+  {
+    "pressure_loss_pct": 8.0,
+    "runs": 30,
+    "flagged_degraded_rate": 0.0,
+    "gas_loss_named_rate": 0.0,
+    "median_anomalous_fraction": 0.067
+  },
+  {
+    "pressure_loss_pct": 10.0,
+    "runs": 30,
+    "flagged_degraded_rate": 0.0,
+    "gas_loss_named_rate": 0.0,
+    "median_anomalous_fraction": 0.0845
+  },
+  {
+    "pressure_loss_pct": 12.0,
+    "runs": 30,
+    "flagged_degraded_rate": 0.0,
+    "gas_loss_named_rate": 0.0,
+    "median_anomalous_fraction": 0.099
+  },
+  {
+    "pressure_loss_pct": 15.0,
+    "runs": 30,
+    "flagged_degraded_rate": 0.9,
+    "gas_loss_named_rate": 0.0,
+    "median_anomalous_fraction": 0.1255
+  },
+  {
+    "pressure_loss_pct": 20.0,
+    "runs": 30,
+    "flagged_degraded_rate": 1.0,
+    "gas_loss_named_rate": 0.0,
+    "median_anomalous_fraction": 0.1685
+  },
+  {
+    "pressure_loss_pct": 25.0,
+    "runs": 30,
+    "flagged_degraded_rate": 1.0,
+    "gas_loss_named_rate": 1.0,
+    "median_anomalous_fraction": 0.385
+  },
+  {
+    "pressure_loss_pct": 30.0,
+    "runs": 30,
+    "flagged_degraded_rate": 1.0,
+    "gas_loss_named_rate": 1.0,
+    "median_anomalous_fraction": 0.9964999999999999
+  }
+]

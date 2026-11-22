@@ -6,7 +6,6 @@ build-backend = "setuptools.build_meta"
 name = "kinematics-ml-engine"
 version = "1.0.0"
 description = "100 Hz Structural Load, Damper Kinematics, and Isolation Forest Anomaly Detection Engine for Aerospace MRO (ATA 32) and Formula 1 Trackside"
-readme = "../README.md"
 requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.24.0",
@@ -19,6 +18,9 @@ dependencies = [
 dev = [
     "pytest>=7.4.0",
 ]
+
+[tool.setuptools]
+packages = ["kinematics_ml_engine"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
