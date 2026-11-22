@@ -2,6 +2,15 @@
 
 **High-Frequency (100 Hz) Structural Load, Damper Kinematics & Thermo-Hydraulic Anomaly Detection Platform for Aerospace MRO (ATA Chapter 32) and Formula 1 Vehicle Dynamics**
 
+## At a Glance
+
+* **What it does:** streams 100 Hz suspension telemetry from a C# / .NET 8 service over UDP, then a Python engine derives damper velocity, classifies bump/rebound regimes, checks structural limits and flags damper faults with an Isolation Forest.
+* **F1 focus:** damper potentiometer, pushrod load and gas-reservoir channels; plank/skid-block bottoming checks against FIA references. The same model also runs an aircraft landing-gear profile.
+* **Data:** synthetic. The generators in `telemetry-streamer-dotnet/Simulation/` and `kinematics_ml_engine/simulator.py` produce nominal, overload and fault laps; no real car data is used (see [Validation & Limitations](#5-validation--limitations)).
+* **Quality:** 18 Pytest tests and a GitHub Actions pipeline that runs the .NET streamer end to end into the Python engine.
+
+![F1 profile: nominal vs gas-loss fault](docs/images/f1_nominal_vs_fault.png)
+
 ---
 
 ## 1. Executive Summary
@@ -76,6 +85,9 @@ An **Isolation Forest** ensemble of randomized binary partition trees isolates o
 
 ```text
 DynaLoad-Telemetry/
+├── docs/
+│   ├── images/                             # Figures used in this README
+│   └── validation/                         # Validation results (JSON)
 ├── README.md                               # Engineering documentation & execution guide
 ├── .github/
 │   └── workflows/
@@ -102,6 +114,8 @@ DynaLoad-Telemetry/
 │   │   ├── anomaly_detector.py             # Isolation Forest & polytropic feature extraction
 │   │   ├── simulator.py                    # 100 Hz synthetic generator & CSV/JSON loaders
 │   │   └── udp_listener.py                 # Live 100 Hz UDP socket capture
+│   ├── validation/
+│   │   └── validate_f1_detector.py         # Gas-loss sensitivity sweep (Section 5)
 │   └── tests/
 │       ├── conftest.py
 │       ├── test_kinematics.py
@@ -157,3 +171,40 @@ streamlit run dashboard/app.py
 Use the sidebar selector to switch instantaneously between:
 * **`Aerospace MRO Mode (ATA 32 Landing Gear)`**
 * **`Formula 1 Trackside Mode (Suspension & Kerb Loads)`**
+
+---
+
+## 5. Validation & Limitations
+
+### 5.1 How sensitive is the F1 detector?
+
+The stock scenarios are easy: over 50 random seeds per scenario, the pipeline flags 0/50 nominal runs and 50/50 overload and fault runs, in both profiles. That mostly shows the synthetic fault is large.
+
+A harder test starts from a **nominal** F1 lap and lowers the reservoir gas pre-charge step by step (30 seeds per step). The detector is fitted on two nominal runs (seeds 11 and 29) that are not in the test set.
+
+![Detection rate vs gas pre-charge loss](docs/images/f1_detector_sensitivity.png)
+
+| Gas pre-charge loss | Flagged as degraded | Gas-loss fault named |
+|---|---|---|
+| 0–12% | 0% | 0% |
+| 15% | 90% | 0% |
+| 20% | 100% | 0% |
+| 25–30% | 100% | 100% |
+
+* **No false alarms** on healthy laps, and reliable detection from about **15% gas loss**.
+* **Diagnosis lags detection:** between 15% and 20% loss the damper is flagged but the fault mode is not named, because the named-fault rule uses a fixed pressure-ratio threshold. A graded severity output would close that gap.
+
+Reproduce with `python kinematics-ml-engine/validation/validate_f1_detector.py` (results in `docs/validation/f1_detector_sensitivity.json`).
+
+### 5.2 Limitations
+
+* **Synthetic data only.** Generators and detector were written together, so these numbers measure internal consistency, not performance on a real car.
+* **Model constants are illustrative.** Pressures, stroke limits and knee velocities are plausible values, not measurements from a specific damper.
+* **Single-corner, single-channel view.** Real setups compare four corners, heave and roll dampers, and correlate with ride height and aero load.
+
+### 5.3 Next steps
+
+* Ingest real 100 Hz suspension data from a racing simulator UDP feed (for example the EA F1 game telemetry, which exposes suspension position and velocity per wheel) through the existing C# streamer.
+* Replace the fixed fault thresholds with a graded severity score and report detection delay in laps.
+* Extend the feature vector to four corners plus heave/roll.
+
